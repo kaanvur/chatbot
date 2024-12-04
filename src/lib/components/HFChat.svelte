@@ -21,14 +21,9 @@
 			dil: 'Çok Dilli'
 		},
 		{
-			id: 'facebook/xglm-564M',
-			ad: 'XGLM-564M',
-			dil: 'Türkçe Destekli'
-		},
-		{
-			id: 'redrussianarmy/gpt2-turkish-cased',
-			ad: 'GPT2-Turkish-Cased',
-			dil: 'Türkçe'
+			id: 'openai-community/gpt2',
+			ad: 'GPT-2',
+			dil: 'Çok Dilli'
 		},
 		{
 			id: 'ytu-ce-cosmos/turkish-gpt2',
@@ -38,82 +33,55 @@
 	];
 	let secilenModel = MODELLER[0].id;
 
+	async function query(modelId: string, prompt: string) {
+		const parameters ={ max_new_tokens: 500, temperature: 0.7, top_p: 0.95, return_full_text: false };
+
+		const response = await fetch(`https://api-inference.huggingface.co/models/${modelId}`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${API_TOKEN}`,
+				'Content-Type': 'application/json',
+				},
+			body: JSON.stringify({ inputs: prompt, parameters }),
+			});
+
+		if (!response.ok) {
+			throw new Error(`HTTP error! status: ${response.status}`);
+		}
+
+		return await response.json();
+	}
+
 	async function mesajGonder() {
 		if (!giris.trim() || yukleniyor) return;
 
 		try {
 			yukleniyor = true;
-			modelYukleniyor = false;
+				modelYukleniyor = false;
 			modelHataMesaji = '';
 
 			const yeniMesaj = { rol: 'kullanici', icerik: giris } as Mesaj;
 			mesajlar = [...mesajlar, yeniMesaj];
 
-			const parameters = secilenModel.includes('opus-mt')
-				? {
-						max_length: 500,
-						temperature: 0.7,
-						top_p: 0.95
-					}
-				: {
-						max_new_tokens: 500,
-						temperature: 0.7,
-						top_p: 0.95,
-						return_full_text: false
-					};
-
-			const prompt = `
-			${giris}
-			`;
-
-			const yanit = await fetch(`https://api-inference.huggingface.co/models/${secilenModel}`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${API_TOKEN}`,
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({
-					inputs: prompt,
-					parameters
-				})
-			});
-
-			const data = await yanit.json();
-
+			const data = await query(secilenModel, giris);
 			if (data.error) {
 				modelYukleniyor = false;
 				modelHataMesaji = data.error;
-				if (data.estimated_time) {
-					modelYukleniyor = true;
-					modelHataMesaji = `Model yükleniyor... Tahmini süre: ${Math.ceil(data.estimated_time)} saniye`;
-					setTimeout(() => {
-						yukleniyor = false;
-						mesajGonder();
-					}, data.estimated_time * 1000);
-				}
 				return;
 			}
 
 			if (Array.isArray(data) && data.length > 0) {
 				const aiYanit = data[0].generated_text;
-				mesajlar = [
-					...mesajlar,
-					{
-						rol: 'ai',
-						icerik: aiYanit
-					}
-				];
+				mesajlar = [...mesajlar, { rol: 'ai', icerik: aiYanit }];
 				giris = '';
 			}
 		} catch (error) {
-			console.error('Hata:', error);
+			console.error(error);
 			modelHataMesaji = 'Bir hata oluştu. Lütfen tekrar deneyin.';
 		} finally {
-			if (!modelYukleniyor) {
 				yukleniyor = false;
 			}
 		}
-	}
 </script>
 
 <div class="max-w-3xl mx-auto p-4 bg-white rounded-2xl shadow-md">
