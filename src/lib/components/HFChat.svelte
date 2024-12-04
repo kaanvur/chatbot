@@ -26,11 +26,6 @@
 			dil: 'Türkçe Destekli'
 		},
 		{
-			id: 'ytu-ce-cosmos/Turkish-Llama-8b-DPO-v0.1',
-			ad: 'Turkish-Llama-8B',
-			dil: 'Türkçe'
-		},
-		{
 			id: 'redrussianarmy/gpt2-turkish-cased',
 			ad: 'GPT2-Turkish-Cased',
 			dil: 'Türkçe'
