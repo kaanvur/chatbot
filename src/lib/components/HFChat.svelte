@@ -67,7 +67,9 @@
 						return_full_text: false
 					};
 
-			const prompt = `<s>[INST] ${giris} [/INST]`;
+			const prompt = `
+			${giris}
+			`;
 
 			const yanit = await fetch(`https://api-inference.huggingface.co/models/${secilenModel}`, {
 				method: 'POST',
@@ -119,9 +121,14 @@
 	}
 </script>
 
-<div class="chat-container">
-	<div class="model-secici">
-		<select id="model" bind:value={secilenModel} class="model-select" disabled={yukleniyor}>
+<div class="max-w-3xl mx-auto p-4 bg-white rounded-2xl shadow-md">
+	<div class="mb-4 flex gap-2 items-center">
+		<select
+			id="model"
+			bind:value={secilenModel}
+			class="flex-1 p-2 border border-gray-200 rounded-lg text-sm bg-white disabled:bg-gray-100 disabled:cursor-not-allowed"
+			disabled={yukleniyor}
+		>
 			{#each MODELLER as model}
 				<option value={model.id}>
 					{model.ad} ({model.dil})
@@ -131,14 +138,18 @@
 	</div>
 
 	{#if modelHataMesaji}
-		<div class="hata-mesaji">
+		<div class="bg-red-100 border border-red-200 text-red-800 p-3 rounded-lg mb-4 text-center">
 			{modelHataMesaji}
 		</div>
 	{/if}
 
-	<div class="mesajlar">
+	<div class="h-[500px] overflow-y-auto p-4 border border-gray-200 rounded-lg mb-4">
 		{#each mesajlar as mesaj}
-			<div class="mesaj {mesaj.rol}">
+			<div
+				class="mb-4 p-4 rounded-lg max-w-[80%] {mesaj.rol === 'kullanici'
+					? 'ml-auto bg-blue-500 text-white'
+					: 'mr-auto bg-gray-100 text-gray-800'}"
+			>
 				<div class="mesaj-icerik">
 					{mesaj.icerik}
 				</div>
@@ -146,126 +157,26 @@
 		{/each}
 
 		{#if yukleniyor}
-			<div class="yukleniyor">
+			<div class="text-center text-gray-500 p-2 italic">
 				<span>Yanıt bekleniyor...</span>
 			</div>
 		{/if}
 	</div>
 
-	<form on:submit|preventDefault={mesajGonder} class="giris-alani">
-		<input type="text" bind:value={giris} placeholder="Mesajınızı yazın..." disabled={yukleniyor} />
-		<button type="submit" disabled={yukleniyor || !giris.trim()}>
+	<form on:submit|preventDefault={mesajGonder} class="flex gap-2">
+		<input
+			type="text"
+			bind:value={giris}
+			placeholder="Mesajınızı yazın..."
+			disabled={yukleniyor}
+			class="flex-1 p-3 border border-gray-200 rounded-lg text-base disabled:bg-gray-50"
+		/>
+		<button
+			type="submit"
+			disabled={yukleniyor || !giris.trim()}
+			class="px-6 py-3 bg-blue-500 text-white font-medium rounded-lg transition-colors hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed"
+		>
 			{modelYukleniyor ? 'Model Yükleniyor...' : 'Gönder'}
 		</button>
 	</form>
 </div>
-
-<style>
-	.chat-container {
-		max-width: 800px;
-		margin: 0 auto;
-		padding: 1rem;
-		background-color: #ffffff;
-		border-radius: 1rem;
-		box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
-	}
-
-	.mesajlar {
-		height: 500px;
-		overflow-y: auto;
-		padding: 1rem;
-		border: 1px solid #e5e7eb;
-		border-radius: 0.5rem;
-		margin-bottom: 1rem;
-	}
-
-	.mesaj {
-		margin-bottom: 1rem;
-		padding: 1rem;
-		border-radius: 0.5rem;
-		max-width: 80%;
-	}
-
-	.kullanici {
-		margin-left: auto;
-		background-color: #3b82f6;
-		color: white;
-	}
-
-	.ai {
-		margin-right: auto;
-		background-color: #f3f4f6;
-		color: #1f2937;
-	}
-
-	.giris-alani {
-		display: flex;
-		gap: 0.5rem;
-	}
-
-	input {
-		flex: 1;
-		padding: 0.75rem;
-		border: 1px solid #e5e7eb;
-		border-radius: 0.5rem;
-		font-size: 1rem;
-	}
-
-	button {
-		padding: 0.75rem 1.5rem;
-		background-color: #3b82f6;
-		color: white;
-		border: none;
-		border-radius: 0.5rem;
-		font-weight: 500;
-		cursor: pointer;
-		transition: background-color 0.2s;
-	}
-
-	button:hover {
-		background-color: #2563eb;
-	}
-
-	button:disabled {
-		background-color: #93c5fd;
-		cursor: not-allowed;
-	}
-
-	.model-secici {
-		margin-bottom: 1rem;
-		display: flex;
-		gap: 0.5rem;
-		align-items: center;
-	}
-
-	.model-select {
-		flex: 1;
-		padding: 0.5rem;
-		border: 1px solid #e5e7eb;
-		border-radius: 0.5rem;
-		font-size: 0.875rem;
-		background-color: white;
-	}
-
-	.yukleniyor {
-		text-align: center;
-		color: #6b7280;
-		padding: 0.5rem;
-		font-style: italic;
-	}
-
-	.hata-mesaji {
-		background-color: #fee2e2;
-		border: 1px solid #fecaca;
-		color: #991b1b;
-		padding: 0.75rem;
-		border-radius: 0.5rem;
-		margin-bottom: 1rem;
-		text-align: center;
-	}
-
-	.model-select:disabled {
-		background-color: #f3f4f6;
-		cursor: not-allowed;
-	}
-</style>
