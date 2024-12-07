@@ -16,6 +16,11 @@
 
 	const MODELLER = [
 		{
+			id: 'mistralai/Mistral-Nemo-Instruct-2407',
+			ad: 'Mistral-Nemo-Instruct',
+			dil: 'Çok Dilli'
+		},
+		{
 			id: 'mistralai/Mistral-7B-Instruct-v0.2',
 			ad: 'Mistral-7B-Instruct',
 			dil: 'Çok Dilli'
