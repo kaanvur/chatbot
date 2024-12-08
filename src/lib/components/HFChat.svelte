@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { env } from '$env/dynamic/public';
+	import { HfInference } from '@huggingface/inference';
 
 	type Mesaj = {
 		rol: 'kullanici' | 'ai';
@@ -14,47 +14,32 @@
 	let modelYukleniyor = false;
 	let modelHataMesaji = '';
 
+	const client = new HfInference(API_TOKEN);
+
 	const MODELLER = [
 		{
 			id: 'mistralai/Mistral-Nemo-Instruct-2407',
 			ad: 'Mistral-Nemo-Instruct',
-			dil: 'Çok Dilli'
+			dil: 'Çok Dilli',
+			tip: 'chat'
 		},
 		{
 			id: 'mistralai/Mistral-7B-Instruct-v0.2',
 			ad: 'Mistral-7B-Instruct',
-			dil: 'Çok Dilli'
-		},
-		{
-			id: 'openai-community/gpt2',
-			ad: 'GPT-2',
-			dil: 'Çok Dilli'
+			dil: 'Çok Dilli',
+			tip: 'chat'
 		},
 		{
 			id: 'ytu-ce-cosmos/turkish-gpt2',
 			ad: 'YTU Turkish-GPT2',
-			dil: 'Türkçe'
+			dil: 'Türkçe',
+			tip: 'text'
 		}
 	];
 	let secilenModel = MODELLER[0].id;
 
-	async function query(modelId: string, prompt: string) {
-		const parameters ={ max_new_tokens: 500, temperature: 0.7, top_p: 0.95, return_full_text: false };
-
-		const response = await fetch(`https://api-inference.huggingface.co/models/${modelId}`, {
-				method: 'POST',
-				headers: {
-					Authorization: `Bearer ${API_TOKEN}`,
-				'Content-Type': 'application/json',
-				},
-			body: JSON.stringify({ inputs: prompt, parameters }),
-			});
-
-		if (!response.ok) {
-			throw new Error(`HTTP error! status: ${response.status}`);
-		}
-
-		return await response.json();
+	interface HFError {
+		error: { message: string };
 	}
 
 	async function mesajGonder() {
@@ -62,31 +47,65 @@
 
 		try {
 			yukleniyor = true;
-				modelYukleniyor = false;
+			modelYukleniyor = false;
 			modelHataMesaji = '';
 
+			const secilenModelBilgisi = MODELLER.find(m => m.id === secilenModel);
 			const yeniMesaj = { rol: 'kullanici', icerik: giris } as Mesaj;
 			mesajlar = [...mesajlar, yeniMesaj];
+			
+			const aiMesaj = { rol: 'ai', icerik: '' } as Mesaj;
+			mesajlar = [...mesajlar, aiMesaj];
+			
+			giris = '';
 
-			const data = await query(secilenModel, giris);
-			if (data.error) {
-				modelYukleniyor = false;
-				modelHataMesaji = data.error;
-				return;
+			if (secilenModelBilgisi?.tip === 'chat') {
+				const stream = await client.chatCompletionStream({
+					model: secilenModel,
+					messages: [{ role: 'user', content: yeniMesaj.icerik }],
+					max_tokens: 500
+				});
+
+				let yanit = '';
+				for await (const chunk of stream) {
+					if (chunk.choices && chunk.choices.length > 0) {
+						const yeniIcerik = chunk.choices[0].delta.content;
+						yanit += yeniIcerik;
+						mesajlar = mesajlar.map((m, index) => 
+							index === mesajlar.length - 1 ? { ...m, icerik: yanit } : m
+						);
+					}
+				}
+			} else {
+				// Text generation modelleri için
+				const stream = await client.textGenerationStream({
+					model: secilenModel,
+					inputs: yeniMesaj.icerik,
+					parameters: {
+						max_new_tokens: 500,
+						temperature: 0.7
+					}
+				});
+
+				let yanit = '';
+				for await (const chunk of stream) {
+					if (chunk.token.text) {
+						yanit += chunk.token.text;
+						mesajlar = mesajlar.map((m, index) => 
+							index === mesajlar.length - 1 ? { ...m, icerik: yanit } : m
+						);
+					}
+				}
 			}
 
-			if (Array.isArray(data) && data.length > 0) {
-				const aiYanit = data[0].generated_text;
-				mesajlar = [...mesajlar, { rol: 'ai', icerik: aiYanit }];
-				giris = '';
-			}
 		} catch (error) {
 			console.error(error);
 			modelHataMesaji = 'Bir hata oluştu. Lütfen tekrar deneyin.';
+			mesajlar = mesajlar.slice(0, -1);
 		} finally {
-				yukleniyor = false;
-			}
+			yukleniyor = false;
 		}
+	}
 </script>
 
 <div class="max-w-3xl mx-auto p-4 bg-white rounded-2xl shadow-md">
@@ -127,6 +146,10 @@
 		{#if yukleniyor}
 			<div class="text-center text-gray-500 p-2 italic">
 				<span>Yanıt bekleniyor...</span>
+			</div>
+		{:else if modelHataMesaji}
+			<div class="bg-red-100 border border-red-200 text-red-800 p-3 rounded-lg mb-4 text-center">
+				{modelHataMesaji}
 			</div>
 		{/if}
 	</div>
